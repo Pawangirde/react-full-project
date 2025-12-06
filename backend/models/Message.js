@@ -30,7 +30,7 @@ const MessageSchema = new mongoose.Schema({
     default: Date.now 
   }
 }, {
-  timestamps: true // Adds createdAt and updatedAt automatically
+  timestamps: true 
 });
 
 module.exports = mongoose.model("Message", MessageSchema);

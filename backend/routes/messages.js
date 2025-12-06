@@ -46,12 +46,12 @@ router.post("/upload", upload.single("image"), async (req, res) => {
       return res.status(400).json({ error: "No file uploaded" });
     }
 
-    // Validate file type
+   
     if (!req.file.mimetype.startsWith("image/")) {
       return res.status(400).json({ error: "File must be an image" });
     }
 
-    // Validate file size (max 5MB)
+    
     if (req.file.size > 5 * 1024 * 1024) {
       return res.status(400).json({ error: "Image size must be less than 5MB" });
     }
