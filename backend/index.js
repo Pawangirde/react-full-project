@@ -4,6 +4,8 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const path = require("path");
 
+const DB_URI = process.env.DB_URI;
+
 const messagesRoute = require("./routes/messages");
 
 const app = express();
@@ -15,8 +17,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.use("/messages", messagesRoute);
 
-const URI =
-  "mongodb+srv://pawangirde01:Pawan%4001@test.wbcekcv.mongodb.net/DigitalBuzzDB?retryWrites=true&w=majority";
+const URI = DB_URI;
 
 mongoose
   .connect(URI)

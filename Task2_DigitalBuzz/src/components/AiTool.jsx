@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Sparkles, MessageCircle, Loader2, Trash } from "lucide-react";
 
 const OPENROUTER_API_KEY =
-  "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";
+  "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";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
