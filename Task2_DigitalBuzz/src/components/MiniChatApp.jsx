@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Send, Image as ImageIcon, Bot, User, X } from "lucide-react";
-import { getMessages, postMessage, uploadImage } from "../services/api";
+import axios from "axios";
 
 export default function MiniChatApp() {
   const [messages, setMessages] = useState([]);
@@ -18,19 +18,39 @@ export default function MiniChatApp() {
     if (isTyping) scrollToBottom();
   }, [isTyping]);
 
-  const loadMessages = async () => {
+  // Inline API client (no shared api.js)
+  const API_BASE =
+    import.meta.env.VITE_API_BASE?.replace(/\/$/, "") ||
+    "http://localhost:4000";
+  const MSG_API = `${API_BASE}/messages`;
+
+  const loadMessages = useCallback(async () => {
     try {
-      const res = await getMessages();
+      const res = await axios.get(MSG_API);
       setMessages(res.data || []);
       scrollToBottom();
     } catch {
       alert("Failed to load messages.");
     }
-  };
+  }, [MSG_API]);
 
   useEffect(() => {
-    loadMessages();
-  }, []);
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await axios.get(MSG_API);
+        if (cancelled) return;
+        setMessages(res.data || []);
+        scrollToBottom();
+      } catch {
+        if (!cancelled) alert("Failed to load messages.");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [MSG_API]);
 
   const getBotReply = (msg) => {
     const t = msg.toLowerCase();
@@ -70,8 +90,10 @@ export default function MiniChatApp() {
     setInput("");
 
     try {
-      await postMessage(userMsg);
-    } catch {}
+      await axios.post(MSG_API, userMsg);
+  } catch (err) {
+    console.warn("Failed to send user message:", err);
+  }
 
     // Bot typing
     setIsTyping(true);
@@ -89,7 +111,7 @@ export default function MiniChatApp() {
       scrollToBottom();
 
       try {
-        await postMessage(botMsg);
+        await axios.post(MSG_API, botMsg);
       } catch (err) {
         console.error("Failed to send bot message:", err);
       }
@@ -112,7 +134,7 @@ export default function MiniChatApp() {
     fd.append("image", file);
 
     try {
-      await uploadImage(fd);
+      await axios.post(`${MSG_API}/upload`, fd);
       setPreview(null);
       fileRef.current.value = "";
       loadMessages();

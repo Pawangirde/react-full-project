@@ -2,13 +2,19 @@ const express = require("express");
 const router = express.Router();
 const multer = require("multer");
 const path = require("path");
+const fs = require("fs");
 const Message = require("../models/Message");
 
+const uploadsDir = path.join(__dirname, "..", "assets", "images");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
 const storage = multer.diskStorage({
-  destination: "uploads/",
+  destination: uploadsDir,
   filename: (req, file, cb) => {
     cb(null, Date.now() + "-" + file.originalname.replace(/\s/g, "_"));
-  }
+  },
 });
 
 const upload = multer({ storage });
@@ -57,7 +63,7 @@ router.post("/upload", upload.single("image"), async (req, res) => {
     }
 
     const serverUrl = process.env.SERVER_URL || "http://localhost:4000";
-    const fileUrl = `${serverUrl}/uploads/${req.file.filename}`;
+    const fileUrl = `${serverUrl}/images/${req.file.filename}`;
 
     const msg = await Message.create({
       sender: "user",
@@ -73,6 +79,8 @@ router.post("/upload", upload.single("image"), async (req, res) => {
     });
 
     res.json(msg);
+
+    console.log("Image uploaded:", req.file.filename);
   } catch (error) {
     console.error("Upload error:", error);
     res.status(500).json({ error: "Failed to upload image" });
