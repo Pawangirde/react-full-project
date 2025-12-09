@@ -6,16 +6,16 @@ export default function Layout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
 
-  // Navigation items for the 3 main features
   const navItems = [
     { name: "Firebase Notifications", path: "/notifications", icon: Bell },
     { name: "AI Tool", path: "/ai-tool", icon: Bot },
     { name: "Mini Chat App", path: "/chat", icon: MessageSquare },
+    { name: "Real Chat App", path: "/real-chat", icon: MessageSquare },
   ];
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* Mobile Overlay */}
+    
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
@@ -29,7 +29,7 @@ export default function Layout({ children }) {
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         } lg:translate-x-0`}
       >
-        {/* Brand Header */}
+        {/* Header */}
         <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200">
           <Link
             to="/notifications"
@@ -46,7 +46,7 @@ export default function Layout({ children }) {
           </button>
         </div>
 
-        {/* Navigation Links */}
+       
         <nav className="mt-4 space-y-1 px-2">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -70,12 +70,11 @@ export default function Layout({ children }) {
         </nav>
       </aside>
 
-      {/* Main Content Area */}
       <div className="flex flex-col flex-1 lg:ml-64 w-full">
         {/* Top Navbar */}
         <header className="sticky top-0 z-20 flex items-center justify-between bg-white shadow-sm px-4 lg:px-6 py-4">
           <div className="flex items-center gap-3">
-            {/* Mobile Sidebar Toggle */}
+           
             <button
               className="lg:hidden text-gray-600 hover:text-gray-800"
               onClick={() => setSidebarOpen(!sidebarOpen)}

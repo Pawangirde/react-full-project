@@ -1,242 +1,170 @@
-import React, { useState } from "react";
-import { Sparkles, MessageCircle, Loader2, Trash } from "lucide-react";
 
-const OPENROUTER_API_KEY =
-  "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";
+import React, { useState, useEffect, useRef } from "react";
+import { MessageCircle, Loader2 } from "lucide-react";
 
-const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+export default function AIChat() {
+  const [input, setInput] = useState("");
+  const [chat, setChat] = useState([]);
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const bottomRef = useRef();
 
-export default function AIWidgets() {
-  const [imagePrompt, setImagePrompt] = useState("");
-  const [generatedImage, setGeneratedImage] = useState(null);
-  const [isGenerating, setIsGenerating] = useState(false);
 
-  const [qnaInput, setQnaInput] = useState("");
-  const [qnaResponse, setQnaResponse] = useState(null);
-  const [isAnswering, setIsAnswering] = useState(false);
-
-  const generateImage = async () => {
-    if (!imagePrompt.trim()) return;
-
-    setIsGenerating(true);
-
-    await new Promise((res) => setTimeout(res, 1500));
-
-    const key = imagePrompt.toLowerCase();
-
-    let selectedImage = null;
-
-    const imageCollections = {
-      car: [
-        "https://images.unsplash.com/photo-1503376780353-7e6692767b70",
-        "https://images.unsplash.com/photo-1502877338535-766e1452684a",
-        "https://images.unsplash.com/photo-1511396274084-7449f2a8e1c0",
-      ],
-      mountain: [
-        "https://images.unsplash.com/photo-1501785888041-af3ef285b470",
-        "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee",
-        "https://images.unsplash.com/photo-1441974231531-c6227db76b6e",
-      ],
-      cat: [
-        "https://images.unsplash.com/photo-1518791841217-8f162f1e1131",
-        "https://images.unsplash.com/photo-1511044568932-338cba0ad803",
-        "https://images.unsplash.com/photo-1494253109108-2e30c049369b",
-      ],
-      city: [
-        "https://images.unsplash.com/photo-1467269204594-9661b134dd2b",
-        "https://images.unsplash.com/photo-1461716834623-60f89b5cb8fb",
-        "https://images.unsplash.com/photo-1464297162577-f5295c892a22",
-      ],
-      nature: [
-        "https://images.unsplash.com/photo-1507525428034-b723cf961d3e",
-        "https://images.unsplash.com/photo-1500534623283-312aade485b7",
-        "https://images.unsplash.com/photo-1470770903676-69b98201ea1c",
-      ],
-    };
-
-    if (imageCollections[key]) {
-      const arr = imageCollections[key];
-      selectedImage = arr[Math.floor(Math.random() * arr.length)];
-    } else {
-      selectedImage = `https://source.unsplash.com/featured/?${encodeURIComponent(
-        imagePrompt
-      )}`;
-    }
-
-    setGeneratedImage(selectedImage);
-    setIsGenerating(false);
-  };
-
-  //   Here im getting response Q&A using OpenRouter
-  function cleanMarkdown(text) {
-    if (!text) return "";
-
+  function cleanText(text) {
     return text
-      .replace(/[*#`>/\\]/g, "")
-      .replace(/\|/g, " ")
-      .replace(/```[\s\S]*?```/g, "")
-      .replace(/\n+/g, " ")
-      .replace(/\s{2,}/g, " ")
+      ?.replace(/\*/g, "")
+      .replace(/-/g, "")
+      .replace(/\n/g, " ")
+      .replace(/\s+/g, " ")
       .trim();
   }
 
-  function limitTo100Words(text) {
-    return text.split(" ").slice(0, 100).join(" ");
+  function extractNamesFromText(text) {
+    if (!text) return [];
+    const matches = text.match(/[A-Z][a-z]+\s[A-Z][a-z]+/g);
+    return matches ? [...new Set(matches)] : [];
   }
 
-  const handleQNA = async () => {
-    if (!qnaInput.trim()) return;
-    setIsAnswering(true);
 
-    try {
-      const response = await fetch(OPENROUTER_URL, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "openai/gpt-oss-20b:free",
-          messages: [
-            {
-              role: "user",
-              content: qnaInput + ". Give answer in simple 100 words.",
-            },
-          ],
-        }),
-      });
-
-      const data = await response.json();
-      console.log("QNA DATA:", data);
-
-      let reply =
-        data?.choices?.[0]?.message?.content ||
-        "Sorry, I couldn't generate an answer.";
-
-      reply = cleanMarkdown(reply);
-
-      reply = limitTo100Words(reply);
-
-      setQnaResponse(reply);
-      setQnaInput("");
-    } catch (error) {
-      console.error("QNA ERROR:", error);
-      alert("OpenRouter request failed.");
+  useEffect(() => {
+    async function loadHistory() {
+      try {
+        const res = await fetch("http://localhost:4000/api/ask/history");
+        const data = await res.json();
+        setChat(data.history || []);
+      } catch (err) {
+        console.log("Error loading history", err);
+      }
     }
+    loadHistory();
+  }, []);
 
-    setIsAnswering(false);
+
+  const ask = async () => {
+    if (!input.trim()) return;
+
+    setLoading(true);
+
+    const res = await fetch("http://localhost:4000/api/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: input }),
+    });
+
+    const data = await res.json();
+
+    setChat(data.history || []);
+
+   
+    const cleanedAnswer = cleanText(data.answer);
+    const extractedNames = extractNamesFromText(cleanedAnswer);
+
+    const filteredEmployees = (data.results || []).filter((emp) =>
+      extractedNames.includes(emp.name)
+    );
+
+    setResults(filteredEmployees);
+    setInput("");
+    setLoading(false);
+
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   return (
-    <div className="grid gap-6 md:grid-cols-2">
-      <div className="border rounded-xl shadow bg-white">
+    <div className="max-w mx-auto">
+      <div className="border rounded-xl shadow bg-white mt-6">
+
+   
         <div className="p-4 border-b">
           <h2 className="flex items-center gap-2 text-lg font-semibold">
-            <Sparkles className="w-5 h-5" /> AI Image Generator
+            <MessageCircle className="w-5 h-5" /> Employee Q&A Assistant
           </h2>
-          <p className="text-sm text-gray-600">
-            Unsplash-based image generator
-          </p>
         </div>
 
         <div className="p-4 space-y-4">
-          <div className="flex gap-2">
-            <input
-              className="flex-1 px-3 py-2 border rounded-lg"
-              placeholder="Describe an image..."
-              value={imagePrompt}
-              onChange={(e) => setImagePrompt(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && generateImage()}
-            />
 
-            <button
-              onClick={generateImage}
-              disabled={isGenerating || !imagePrompt.trim()}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50"
-            >
-              {isGenerating ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                "Generate"
-              )}
-            </button>
+         
+          <div className="h-[350px] overflow-y-auto border p-3 rounded-lg bg-gray-50 space-y-3">
+            {chat.map((msg, i) => (
+              <div
+                key={i}
+                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className={`max-w-[75%] p-3 rounded-xl ${
+                    msg.role === "user"
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-200 text-gray-900"
+                  }`}
+                >
+                  {msg.message}
+                </div>
+              </div>
+            ))}
+
+            {loading && (
+              <div className="flex justify-start">
+                <div className="bg-gray-200 p-3 rounded-xl flex gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Thinking…
+                </div>
+              </div>
+            )}
+
+            <div ref={bottomRef}></div>
           </div>
 
-          {generatedImage && (
-            <div className="relative space-y-2">
-              <button
-                onClick={() => setGeneratedImage(null)}
-                className="absolute top-2 right-2 bg-red-600 text-white w-7 h-7 rounded-full flex items-center justify-center hover:bg-red-700"
-              >
-                <Trash className="w-4 h-4" />
-              </button>
-
-              <img
-                src={generatedImage}
-                alt="Generated"
-                className="w-full h-80 object-cover rounded-lg border"
-              />
+       
+          {results.length > 0 && (
+            <div className="overflow-auto border rounded-lg mt-3">
+              <table className="min-w-full text-sm text-left">
+                <thead className="bg-gray-200 text-gray-700">
+                  <tr>
+                    <th className="p-2">Name</th>
+                    <th className="p-2">Role</th>
+                    <th className="p-2">Department</th>
+                    <th className="p-2">Location</th>
+                    <th className="p-2">Email</th>
+                    <th className="p-2">Phone</th>
+                    <th className="p-2">Skills</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {results.map((emp, i) => (
+                    <tr key={i} className="border-t">
+                      <td className="p-2">{emp.name}</td>
+                      <td className="p-2">{emp.role}</td>
+                      <td className="p-2">{emp.department}</td>
+                      <td className="p-2">{emp.location}</td>
+                      <td className="p-2">{emp.email}</td>
+                      <td className="p-2">{emp.phone}</td>
+                      <td className="p-2">{emp.skills?.join(", ")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
 
-          {!generatedImage && !isGenerating && (
-            <div className="h-80 border-2 border-dashed rounded-lg flex items-center justify-center text-gray-500">
-              Describe something to generate an image.
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/*This is Q&A ASSISTANT logic here */}
-      <div className="border rounded-xl shadow bg-white">
-        <div className="p-4 border-b">
-          <h2 className="flex items-center gap-2 text-lg font-semibold">
-            <MessageCircle className="w-5 h-5" /> AI Q&A Assistant
-          </h2>
-        </div>
-
-        <div className="p-4 space-y-4">
+        
           <div className="flex gap-2">
             <input
               className="flex-1 px-3 py-2 border rounded-lg"
-              placeholder="Ask something..."
-              value={qnaInput}
-              disabled={isAnswering}
-              onChange={(e) => setQnaInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleQNA()}
+              placeholder="Ask something about employees..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && ask()}
             />
 
             <button
-              onClick={handleQNA}
-              disabled={isAnswering || !qnaInput.trim()}
+              onClick={ask}
+              disabled={loading}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg"
             >
-              {isAnswering ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                "Ask"
-              )}
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Ask"}
             </button>
           </div>
 
-          {qnaResponse && (
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-gray-800 text-sm">{qnaResponse}</p>
-            </div>
-          )}
-
-          {!qnaResponse && !isAnswering && (
-            <div className="p-4 border border-dashed rounded text-center text-gray-500">
-              Try asking: “What is React?”
-            </div>
-          )}
-
-          {isAnswering && (
-            <div className="p-4 rounded-lg border flex items-center justify-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-              Thinking...
-            </div>
-          )}
         </div>
       </div>
     </div>

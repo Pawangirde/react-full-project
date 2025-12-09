@@ -1,21 +1,21 @@
 const mongoose = require("mongoose");
 
 const MessageSchema = new mongoose.Schema({
-  sender: { 
-    type: String, 
+  sender: {
+    type: String,
     required: true,
     enum: ["user", "bot"],
     default: "user"
   },
-  type: { 
-    type: String, 
+  type: {
+    type: String,
     required: true,
     enum: ["text", "image"],
     default: "text"
   },
-  content: { 
-    type: String, 
-    required: true 
+  content: {
+    type: String,
+    required: true
   },
   // For image attachments
   attachment: {
@@ -25,12 +25,12 @@ const MessageSchema = new mongoose.Schema({
     size: Number,
     url: String
   },
-  timestamp: { 
-    type: Date, 
-    default: Date.now 
+  timestamp: {
+    type: Date,
+    default: Date.now
   }
 }, {
-  timestamps: true 
+  timestamps: true
 });
 
 module.exports = mongoose.model("Message", MessageSchema);
